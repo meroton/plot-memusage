@@ -47,28 +47,39 @@ def time(entry: ParsedEntry, start=0, scale=1) -> Entry:
 
 def plot(
     *,
+    title: Optional[str],
     stacks: List[int],
     heaps: List[int],
-    xs: List[int],
+    xaxis: Tuple[List[int], str],
     image: str,
     total: bool,
 ):
+    xs, xlabel = xaxis
+
     fix, ax = plt.subplots()
-    ax.plot(xs, heaps, linestyle=None, label="heap", color="red")
-    ax.plot(xs, stacks, linestyle=None, label="stack", color="green")
+    ax.plot(xs, heaps, linestyle=None, label="Heap", color="red")
+    ax.plot(xs, stacks, linestyle=None, label="Stack", color="green")
 
     if total:
         totals = [0] * len(xs)
         for i in range(len(xs)):
             totals[i] = stacks[i] + heaps[i]
-        ax.plot(xs, totals, linestyle=None, label="total", color="black")
+        ax.plot(xs, totals, linestyle=None, label="Total", color="black")
 
+    if title:
+        ax.set_title(title)
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel("Size [byte]")
+
+    plt.legend()
     plt.savefig(image)
     print(f"Saved {image}")
 
 
 def arguments(args: List[str]):
     parser = argparse.ArgumentParser()
+    parser.add_argument("--title", help="Graph title")
     parser.add_argument(
         "-T",
         "--total",
@@ -91,9 +102,15 @@ def main(
     datafile: str,
     imagefile: str,
     *,
-    xtransformer: Callable[[List[int]], List[int]],
+    title: str,
+    plot_time: bool,
     total: bool,
 ):
+    xtransformer, xlabel = {
+        True: (lambda x: x, "Time [s]"),
+        False: (lambda x: range(len(x)), "Linear allocations [#]"),
+    }[plot_time]
+
     data = open(sys.argv[1], "rb").read()
     count = int(len(data) / SIZE) - 2
 
@@ -131,24 +148,22 @@ def main(
         times[i] = entry.time
 
     plot(
-        stacks=stacks, heaps=heaps, xs=xtransformer(times), image=imagefile, total=total
+        title=title,
+        stacks=stacks,
+        heaps=heaps,
+        xaxis=(xtransformer(times), xlabel),
+        image=imagefile,
+        total=total,
     )
 
 
 if __name__ == "__main__":
     args = arguments(sys.argv[1:])
-    print(args)
-
-    xtransformer = {
-        True: lambda x: x,
-        False: lambda x: range(len(x)),
-    }[args.time]
-
-    xtransformer2 = lambda x: x
 
     main(
         args.datafile,
         args.imagefile,
-        xtransformer=xtransformer,
+        title=args.title,
+        plot_time=args.time,
         total=args.total,
     )
