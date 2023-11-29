@@ -1,8 +1,7 @@
-import sys
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 import argparse
+import matplotlib.pyplot as plt
 import struct
+import sys
 
 from dataclasses import dataclass
 from typing import Any, Callable, List, Optional, Tuple, TypeVar
@@ -47,18 +46,18 @@ def time(entry: ParsedEntry, start=0, scale=1) -> Entry:
 
 def plot(
     *,
-    title: Optional[str],
     stacks: List[int],
     heaps: List[int],
     xaxis: Tuple[List[int], str],
     image: str,
     total: bool,
+    title: Optional[str] = None,
 ):
     xs, xlabel = xaxis
 
     fix, ax = plt.subplots()
-    ax.plot(xs, heaps, linestyle=None, label="Heap", color="red")
-    ax.plot(xs, stacks, linestyle=None, label="Stack", color="green")
+    ax.plot(xs, heaps, '. ', markersize=1, label="Heap", color="red")
+    ax.plot(xs, stacks, '. ', markersize=1, label="Stack", color="green")
 
     if total:
         totals = [0] * len(xs)
@@ -93,7 +92,7 @@ def arguments(args: List[str]):
         action="store_true",
     )
     parser.add_argument("datafile", help="Datafile from `memusage`")
-    parser.add_argument("imagefile", help="Output filename for the image")
+    parser.add_argument("imagefile", help="Output filename for the plot")
 
     return parser.parse_args(args)
 
