@@ -52,7 +52,8 @@ def plot(
     heaps: List[int],
     xaxis: Tuple[List[int], str],
     image: str,
-    total: bool,
+    plot_total: bool,
+    plot_stack: bool,
     title: Optional[str] = None,
 ):
     xs, xlabel = xaxis
@@ -63,11 +64,12 @@ def plot(
         "total": "black",
     }
     fig, ax = plt.subplots()
-    ax2 = ax.twinx()
-    ax2.plot(xs, stacks, '-', linewidth=0.5, label="Stack", color=color["stack"])
     ax.plot(xs, heaps, '-', linewidth=0.5, label="Heap", color=color["heap"])
+    if plot_stack:
+        ax2 = ax.twinx()
+        ax2.plot(xs, stacks, '-', linewidth=0.5, label="Stack", color=color["stack"])
 
-    if total:
+    if plot_total:
         totals = [0] * len(xs)
         for i in range(len(xs)):
             totals[i] = stacks[i] + heaps[i]
@@ -78,10 +80,12 @@ def plot(
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel("Heap size [byte]")
-    ax2.set_ylabel("Stack size [byte]")
+
+    if plot_stack:
+        ax2.set_ylabel("Stack size [byte]")
+        [t.set_color(color["stack"]) for t in ax2.yaxis.get_ticklabels()]
 
     [t.set_color(color["heap"]) for t in ax.yaxis.get_ticklabels()]
-    [t.set_color(color["stack"]) for t in ax2.yaxis.get_ticklabels()]
 
     fig.tight_layout()
     plt.savefig(image)
@@ -103,6 +107,12 @@ def arguments(args: List[str]):
         help="Generate output linear to time (default is linear to number of function calls)",
         action="store_true",
     )
+    parser.add_argument(
+        "--no-stack",
+        help="Do not plot the stack usage.",
+        action="store_false",
+        dest="stack",
+    )
     parser.add_argument("datafile", help="Datafile from `memusage`")
     parser.add_argument("imagefile", help="Output filename for the plot")
 
@@ -115,7 +125,8 @@ def main(
     *,
     title: str,
     plot_time: bool,
-    total: bool,
+    plot_total: bool,
+    plot_stack: bool,
 ):
     xtransformer, xlabel = {
         True: (lambda x: x, "Time [s]"),
@@ -164,7 +175,8 @@ def main(
         heaps=heaps,
         xaxis=(xtransformer(times), xlabel),
         image=imagefile,
-        total=total,
+        plot_total=plot_total,
+        plot_stack=plot_stack,
     )
 
 
@@ -176,5 +188,6 @@ if __name__ == "__main__":
         args.imagefile,
         title=args.title,
         plot_time=args.time,
-        total=args.total,
+        plot_total=args.total,
+        plot_stack=args.stack,
     )
