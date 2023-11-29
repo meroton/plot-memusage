@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 import matplotlib.pyplot as plt
 import struct
@@ -56,8 +58,8 @@ def plot(
     xs, xlabel = xaxis
 
     fix, ax = plt.subplots()
-    ax.plot(xs, heaps, '. ', markersize=1, label="Heap", color="red")
-    ax.plot(xs, stacks, '. ', markersize=1, label="Stack", color="green")
+    ax.plot(xs, heaps, '.-', markersize=1, label="Heap", color="red")
+    ax.plot(xs, stacks, '.-', markersize=1, label="Stack", color="green")
 
     if total:
         totals = [0] * len(xs)
@@ -72,6 +74,8 @@ def plot(
     ax.set_ylabel("Size [byte]")
 
     plt.legend()
+
+    fig.tight_layout()
     plt.savefig(image)
     print(f"Saved {image}")
 
