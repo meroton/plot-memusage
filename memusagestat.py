@@ -57,23 +57,31 @@ def plot(
 ):
     xs, xlabel = xaxis
 
-    fix, ax = plt.subplots()
-    ax.plot(xs, heaps, '.-', markersize=1, label="Heap", color="red")
-    ax.plot(xs, stacks, '.-', markersize=1, label="Stack", color="green")
+    color = {
+        "heap": "red",
+        "stack": "green",
+        "total": "black",
+    }
+    fig, ax = plt.subplots()
+    ax2 = ax.twinx()
+    ax2.plot(xs, stacks, '-', linewidth=0.5, label="Stack", color=color["stack"])
+    ax.plot(xs, heaps, '-', linewidth=0.5, label="Heap", color=color["heap"])
 
     if total:
         totals = [0] * len(xs)
         for i in range(len(xs)):
             totals[i] = stacks[i] + heaps[i]
-        ax.plot(xs, totals, linestyle=None, label="Total", color="black")
+        ax.plot(xs, totals, linestyle=None, label="Total", color=color["total"])
 
     if title:
         ax.set_title(title)
 
     ax.set_xlabel(xlabel)
-    ax.set_ylabel("Size [byte]")
+    ax.set_ylabel("Heap size [byte]")
+    ax2.set_ylabel("Stack size [byte]")
 
-    plt.legend()
+    [t.set_color(color["heap"]) for t in ax.yaxis.get_ticklabels()]
+    [t.set_color(color["stack"]) for t in ax2.yaxis.get_ticklabels()]
 
     fig.tight_layout()
     plt.savefig(image)
