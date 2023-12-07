@@ -53,7 +53,7 @@ def plot(
     xaxis: Tuple[List[int], str],
     image: str,
     plot_total: bool,
-    plot_stack: bool,
+    plot_stack: Optional[str],
     title: Optional[str] = None,
 ):
     xs, xlabel = xaxis
@@ -64,12 +64,21 @@ def plot(
         "total": "black",
     }
     fig, ax = plt.subplots()
-    ax.plot(xs, heaps, '-', linewidth=0.5, label="Heap", color=color["heap"])
+    stack_ax = ax
+    ax.plot(xs, heaps, "-", linewidth=0.5, label="Heap", color=color["heap"])
+
     if plot_stack:
-        ax2 = ax.twinx()
-        ax2.plot(xs, stacks, '-', linewidth=0.5, label="Stack", color=color["stack"])
+        assert plot_stack in STACK_SCALE_CHOICES, "unexpected stack scale" + str(
+            plot_stack
+        )
+        if plot_stack == STACK_DIFFERENT_SCALES:
+            stack_ax = ax.twinx()
+        stack_ax.plot(
+            xs, stacks, "-", linewidth=0.5, label="Stack", color=color["stack"]
+        )
 
     if plot_total:
+        # TODO: handle the legend better
         totals = [0] * len(xs)
         for i in range(len(xs)):
             totals[i] = stacks[i] + heaps[i]
@@ -82,39 +91,51 @@ def plot(
     ax.set_ylabel("Heap size [byte]")
 
     if plot_stack:
-        ax2.set_ylabel("Stack size [byte]")
-        [t.set_color(color["stack"]) for t in ax2.yaxis.get_ticklabels()]
-
-    [t.set_color(color["heap"]) for t in ax.yaxis.get_ticklabels()]
+        assert plot_stack in STACK_SCALE_CHOICES, "unexpected stack scale" + str(
+            plot_stack
+        )
+        if plot_stack == STACK_DIFFERENT_SCALES:
+            ax.set_ylabel("Heap size [byte]")
+            stack_ax.set_ylabel("Stack size [byte]")
+            [t.set_color(color["stack"]) for t in stack_ax.yaxis.get_ticklabels()]
+            [t.set_color(color["heap"]) for t in ax.yaxis.get_ticklabels()]
+        elif plot_stack == STACK_SAME_SCALE:
+            ax.legend()
 
     fig.tight_layout()
     plt.savefig(image)
     print(f"Saved {image}")
 
 
+STACK_SAME_SCALE = "same-scale"
+STACK_DIFFERENT_SCALES = "different-scales"
+STACK_NO_SCALE = "none"
+STACK_SCALE_CHOICES = [STACK_SAME_SCALE, STACK_DIFFERENT_SCALES, STACK_NO_SCALE]
+
+
 def arguments(args: List[str]):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--title", help="Graph title")
+    parser.add_argument("--title", help="Graph title.")
     parser.add_argument(
         "-T",
         "--total",
-        help="Also draw graph for total memory consumption",
+        help="Also draw graph for total memory consumption.",
         action="store_true",
     )
     parser.add_argument(
         "-t",
         "--time",
-        help="Generate output linear to time (default is linear to number of function calls)",
+        help="Generate output linear to time (default is linear to number of function calls).",
         action="store_true",
     )
     parser.add_argument(
-        "--no-stack",
-        help="Do not plot the stack usage.",
-        action="store_false",
-        dest="stack",
+        "--stack",
+        help="Plot the stack usage in different plot scales (or no stack usage).",
+        default=STACK_SAME_SCALE,
+        choices=STACK_SCALE_CHOICES,
     )
-    parser.add_argument("datafile", help="Datafile from `memusage`")
-    parser.add_argument("imagefile", help="Output filename for the plot")
+    parser.add_argument("datafile", help="Datafile from `memusage`.")
+    parser.add_argument("imagefile", help="Output filename for the plot.")
 
     return parser.parse_args(args)
 
@@ -126,14 +147,14 @@ def main(
     title: str,
     plot_time: bool,
     plot_total: bool,
-    plot_stack: bool,
+    plot_stack: Optional[str],
 ):
     xtransformer, xlabel = {
         True: (lambda x: x, "Time [s]"),
         False: (lambda x: range(len(x)), "Linear allocations [#]"),
     }[plot_time]
 
-    data = open(sys.argv[1], "rb").read()
+    data = open(datafile, "rb").read()
     count = int(len(data) / SIZE) - 2
 
     stacks = [0] * count
@@ -182,6 +203,7 @@ def main(
 
 if __name__ == "__main__":
     args = arguments(sys.argv[1:])
+    plot_stack: Optional[str] = None
 
     main(
         args.datafile,
