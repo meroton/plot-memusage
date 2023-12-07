@@ -51,3 +51,36 @@ $ ./memusagestat.py --stack=same-scale --title "Bazel's memory allocation" bazel
 ```
 
 ![new plot](static/bazel-allocation.png)
+
+The astute reader will notice that the stack axis differs slightly between the two plots.
+We have not put our finger exactly on why,
+some of it is probably the age old kilo-kibi byte confusion.
+But there may be some subtleties in how `memusagestat` draws the plot,
+with more direct graphing computations,
+to our reading and parsing the python code is correct.
+And the `maxsize_stack` is reported as 12752
+(which is greater than 12k, 12288).
+This is shown only in the python plot.
+
+## Compare the data parsing
+
+To make sure that we plot the correct data
+we can compare and verify the parser against what the `memusagestat` c code parsers.
+`memusagestat.py` can print the parsed entries from the allocation log file `bazel.mem` in our case.
+Which can be compared to a patched oracle `memusagestat` from glibc.
+Apply the patch in `0001-Oracle-Print-parsed-entries.patch`
+and rebuild following the instructions [on our blog].
+
+```
+# Patch and re-compile glibc's malloc/memusagestat
+$ export GLIBC=/home/nils/bin/gits/glibc/build/x86_64/malloc
+$ $GLIBC/memusagestat -o static/original-memusagestat.png bazel.mem > reference
+$ ./memusagestat.py --stack=different-scales --title "Bazel's memory allocation" --print-parsed-entries bazel.mem static/bazel-allocation.png > new-parser
+$ diff new-parser reference
+75913d75912
+< Saved static/bazel-allocation.png
+```
+
+This gives us confidence in our parser, and standard `matplotlib` plots.
+
+[on our blog]: https://meroton.com/docs/captains-log/Plotting-memusagestat-with-python/#building-memusagestat-and-glibc

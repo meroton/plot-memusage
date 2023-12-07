@@ -134,10 +134,25 @@ def arguments(args: List[str]):
         default=STACK_SAME_SCALE,
         choices=STACK_SCALE_CHOICES,
     )
+    parser.add_argument(
+        "--print-parsed-entries",
+        help="Print each parsed entry to compare with a patched 'memusagestat' oracle. This is very verbose.",
+        action="store_true",
+    )
     parser.add_argument("datafile", help="Datafile from `memusage`.")
     parser.add_argument("imagefile", help="Output filename for the plot.")
 
     return parser.parse_args(args)
+
+
+MAXIMUM = """                 : {number}
+maxsize_total    : {maxsize_total}
+maxsize time_low : {maxsize_time_low}
+maxsize time_high: {maxsize_time_high}
+maxsize_heap     : {maxsize_heap}
+maxsize_stack    : {maxsize_stack}
+        time_low : {time_low}
+        time_high: {time_high}"""
 
 
 def main(
@@ -147,6 +162,7 @@ def main(
     title: str,
     plot_time: bool,
     plot_total: bool,
+    print_parsed_entries: bool,
     plot_stack: Optional[str],
 ):
     xtransformer, xlabel = {
@@ -162,6 +178,9 @@ def main(
     times = [0] * count
     entries: List[Entry] = [Entry(0, 0, 0)] * count
 
+    if print_parsed_entries:
+        raw_entries: List[ParsedEntry] = [ParsedEntry(0, 0, 0, 0)] * count
+
     headers = [
         parse(data[0:SIZE]),
         parse(data[SIZE : 2 * SIZE]),
@@ -172,8 +191,30 @@ def main(
     for i in range(count):
         start = 2 * SIZE + SIZE * i
         end = 2 * SIZE + SIZE * i + SIZE
-        entry = time(parse(data[start:end]), start=first.time, scale=1e10)
+        raw = parse(data[start:end])
+        entry = time(raw, start=first.time, scale=1e10)
         entries[i] = entry
+        if print_parsed_entries:
+            raw_entries[i] = raw
+
+    if print_parsed_entries:
+        print(
+            MAXIMUM.format(
+                number=headers[0].heap,
+                maxsize_total=headers[0].stack,
+                maxsize_time_low=headers[0].time_low,
+                maxsize_time_high=headers[0].time_high,
+                maxsize_heap=headers[1].heap,
+                maxsize_stack=headers[1].stack,
+                time_low=headers[1].time_low,
+                time_high=headers[1].time_high,
+            )
+        )
+        for i, entry in enumerate(raw_entries):
+            now = entry.time_high << 32 | entry.time_low
+            print(
+                f"{i}: ({entry.heap}, {entry.stack}, {entry.time_low}, {entry.time_high} ({now}))"
+            )
 
     # The data files contains buffered entries,
     # so the time is usually increasing but a different chunk can jump backward.
@@ -212,4 +253,5 @@ if __name__ == "__main__":
         plot_time=args.time,
         plot_total=args.total,
         plot_stack=args.stack,
+        print_parsed_entries=args.print_parsed_entries,
     )
